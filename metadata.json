@@ -1,0 +1,6 @@
+{
+  "name": "All-Optical Campus Architecture Engineering Suite",
+  "description": "Modern Campus Network Infrastructure: FTTO, POL and All-Optical Architecture engineering platform and interactive guide. Designed & Developed by Mr. Zeeshan Javed, AI System Lead Engineer, Directorate of IT, The Islamia University of Bahawalpur.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
