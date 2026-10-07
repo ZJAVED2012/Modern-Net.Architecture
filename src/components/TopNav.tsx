@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BrandLogoLeft, AuthorityLogoRight } from './Logos';
 import {
   Network,
   Printer,
@@ -17,7 +18,8 @@ import {
   Calculator,
   Compass,
   CheckCircle2,
-  BookOpen
+  BookOpen,
+  Bot
 } from 'lucide-react';
 
 interface TopNavProps {
@@ -53,6 +55,8 @@ export const TopNav: React.FC<TopNavProps> = ({ activeTab, setActiveTab, onPrint
       items: [
         { id: 'ftto-studio', label: 'FTTO & POL Studio' },
         { id: 'deploy-3d', label: '3D Deployment Graph', badge: '3D' },
+        { id: 'path-tracer', label: 'Optical Path Tracer', badge: 'Trace' },
+        { id: 'knowledge-base', label: 'Knowledge Base', badge: 'ITU' },
         { id: 'topology', label: 'Interactive Topology' },
         { id: 'guide', label: 'Architecture Guide (29 Sec)' }
       ]
@@ -69,8 +73,9 @@ export const TopNav: React.FC<TopNavProps> = ({ activeTab, setActiveTab, onPrint
     },
     {
       id: 'operations',
-      label: 'Deployment & Lab',
+      label: 'Deployment & AI',
       items: [
+        { id: 'ai-assistant', label: 'AI Optical Chatbot', badge: 'AI' },
         { id: 'roadmap', label: 'Deployment Roadmap (24 Wk)' },
         { id: 'diagnostics', label: 'Optical Fault Simulator', badge: 'Lab' },
         { id: 'audit', label: 'Design Checklist (36 Pt)' },
@@ -86,21 +91,9 @@ export const TopNav: React.FC<TopNavProps> = ({ activeTab, setActiveTab, onPrint
     <header className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-md border-b border-slate-800 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Zone 1: Brand Wordmark & Official Seal */}
+          {/* Zone 1: Brand Logo (Left Side) */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
-              <Network className="w-4 h-4" />
-            </div>
-            <a
-              href="#top"
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveTab('executive');
-              }}
-              className="text-sm sm:text-base font-extrabold tracking-tight text-white hover:text-cyan-400 transition-colors whitespace-nowrap"
-            >
-              <span>Modern Net.Architecture</span>
-            </a>
+            <BrandLogoLeft onClick={() => setActiveTab('executive')} />
           </div>
 
           {/* Zone 2: Standard Categorized Navigation Dropdowns (Desktop) */}
@@ -175,9 +168,18 @@ export const TopNav: React.FC<TopNavProps> = ({ activeTab, setActiveTab, onPrint
             )}
 
             <button
+              onClick={() => setActiveTab('ai-assistant')}
+              title="Open AI Optical Network Chatbot (Urdu & English)"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-950 bg-gradient-to-r from-cyan-400 to-teal-400 hover:from-cyan-300 hover:to-teal-300 rounded-lg transition-colors whitespace-nowrap shadow-sm cursor-pointer"
+            >
+              <Bot className="w-3.5 h-3.5" />
+              <span>AI Chatbot</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('proposal')}
               title="Generate formal PDF proposal for university leadership"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-950 bg-gradient-to-r from-cyan-400 to-teal-400 hover:from-cyan-300 hover:to-teal-300 rounded-lg transition-colors whitespace-nowrap shadow-sm cursor-pointer"
+              className="hidden xl:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
             >
               <FileText className="w-3.5 h-3.5" />
               <span>Proposal PDF</span>
@@ -192,9 +194,9 @@ export const TopNav: React.FC<TopNavProps> = ({ activeTab, setActiveTab, onPrint
               <span>Print</span>
             </button>
 
-            <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-slate-800 text-xs text-slate-400">
-              <span className="text-slate-500">IUB</span>
-              <span className="text-cyan-400 font-medium">Directorate of IT</span>
+            {/* Zone 3 Right Side Official Seal: IUB Directorate of IT (Always visible on right side) */}
+            <div className="flex items-center pl-2 sm:pl-2.5 border-l border-slate-800 shrink-0">
+              <AuthorityLogoRight />
             </div>
 
             {/* Mobile menu toggle */}
@@ -237,6 +239,11 @@ export const TopNav: React.FC<TopNavProps> = ({ activeTab, setActiveTab, onPrint
         {/* Mobile menu dropdown */}
         {mobileMenuOpen && (
           <div className="lg:hidden py-4 border-t border-slate-800 space-y-4 max-h-[80vh] overflow-y-auto">
+            {/* Dual Logos in Mobile Menu */}
+            <div className="flex items-center justify-between px-3 pb-3 border-b border-slate-800/80">
+              <BrandLogoLeft onClick={() => { setActiveTab('executive'); setMobileMenuOpen(false); }} />
+              <AuthorityLogoRight />
+            </div>
             {navGroups.map((group) => (
               <div key={group.id} className="space-y-1">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3">

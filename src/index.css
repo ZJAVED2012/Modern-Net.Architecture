@@ -14,6 +14,11 @@
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
+
+  .font-urdu {
+    font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, sans-serif;
+    line-height: 1.85;
+  }
 }
 
 /* Standard A4 Paper Page Settings */

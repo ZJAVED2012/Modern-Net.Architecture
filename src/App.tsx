@@ -25,6 +25,9 @@ import { ProjectReportGenerator } from './components/ProjectReportGenerator';
 import { VisualBriefReader } from './components/VisualBriefReader';
 import { OpticalDiagnosticsSimulator } from './components/OpticalDiagnosticsSimulator';
 import { CampusBomEstimator } from './components/CampusBomEstimator';
+import { OpticalPathTracer } from './components/OpticalPathTracer';
+import { EngineeringKnowledgeBase } from './components/EngineeringKnowledgeBase';
+import { OpticalNetworkAiChatbot } from './components/OpticalNetworkAiChatbot';
 import { QuickCommandPalette } from './components/QuickCommandPalette';
 import { IubEngineeringFooter } from './components/IubEngineeringFooter';
 import { CHAPTERS_DATA } from './data/chaptersData';
@@ -483,6 +486,27 @@ export default function App() {
           </div>
         )}
 
+        {/* Tab 1.65: Optical Path Tracer (OLT Port to ONU Path Highlighting) */}
+        {activeTab === 'path-tracer' && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <OpticalPathTracer />
+          </div>
+        )}
+
+        {/* Tab 1.7: Engineering Knowledge Base & ITU-T Standards */}
+        {activeTab === 'knowledge-base' && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <EngineeringKnowledgeBase />
+          </div>
+        )}
+
+        {/* Tab 1.75: AI Optical Network Assistant (Urdu & English) */}
+        {activeTab === 'ai-assistant' && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <OpticalNetworkAiChatbot isFullPage={true} />
+          </div>
+        )}
+
         {/* Tab 1.8: Deployment Lifecycle Roadmap */}
         {activeTab === 'roadmap' && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -556,6 +580,11 @@ export default function App() {
 
       {/* Institutional Academic Engineering Footer */}
       <IubEngineeringFooter />
+
+      {/* Floating AI Assistant Chatbot (Urdu & English) - Persistent on all tabs except full-page AI tab */}
+      {activeTab !== 'ai-assistant' && (
+        <OpticalNetworkAiChatbot isFullPage={false} />
+      )}
 
       {/* Quick Command Palette & Search Modal (Ctrl+K) */}
       <QuickCommandPalette

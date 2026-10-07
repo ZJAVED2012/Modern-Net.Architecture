@@ -43,7 +43,8 @@ import {
   Volume2,
   VolumeX,
   FastForward,
-  Rewind
+  Rewind,
+  BookOpen
 } from 'lucide-react';
 
 export type EnvironmentKey =
@@ -1288,9 +1289,15 @@ export const NetworkDeployment3DGraph: React.FC<NetworkDeployment3DGraphProps> =
   // 3D Cinematic Video Tour State
   const [isVideoTourMode, setIsVideoTourMode] = useState<boolean>(initialVideoTour);
   const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(initialVideoTour);
+  const [isFullPageCinemaOpen, setIsFullPageCinemaOpen] = useState<boolean>(initialVideoTour);
+  const [cinemaViewMode, setCinemaViewMode] = useState<'flythrough' | 'schematic' | 'split'>('flythrough');
+  const [isSubtitleVisible, setIsSubtitleVisible] = useState<boolean>(true);
   const [videoSceneIndex, setVideoSceneIndex] = useState<number>(0);
   const [videoPlaybackSpeed, setVideoPlaybackSpeed] = useState<number>(1);
   const [isVideoAudioMuted, setIsVideoAudioMuted] = useState<boolean>(false);
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+  const [isUrduGuideModalOpen, setIsUrduGuideModalOpen] = useState<boolean>(false);
+  const [urduVoiceActive, setUrduVoiceActive] = useState<boolean>(false);
 
   React.useEffect(() => {
     if (initialEnvKey) {
@@ -1301,8 +1308,29 @@ export const NetworkDeployment3DGraph: React.FC<NetworkDeployment3DGraphProps> =
     if (initialVideoTour) {
       setIsVideoTourMode(true);
       setIsVideoPlaying(true);
+      setIsFullPageCinemaOpen(true);
     }
   }, [initialEnvKey, initialVideoTour]);
+
+  // Full-page Cinema hotkeys: Space to pause/play, Esc to exit, Arrows to navigate
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isFullPageCinemaOpen) {
+        if (e.key === 'Escape') {
+          handleExitVideoTour();
+        } else if (e.code === 'Space') {
+          e.preventDefault();
+          handleToggleVideoPlay();
+        } else if (e.key === 'ArrowRight') {
+          handleNextVideoScene();
+        } else if (e.key === 'ArrowLeft') {
+          handlePrevVideoScene();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullPageCinemaOpen, isVideoPlaying, videoSceneIndex]);
 
   const env = ENVIRONMENTS_DATA[activeEnvKey] || ENVIRONMENTS_DATA.university;
   const selectedNode = env.nodes.find(n => n.id === selectedNodeId) || env.nodes[0];
@@ -1322,7 +1350,7 @@ export const NetworkDeployment3DGraph: React.FC<NetworkDeployment3DGraphProps> =
       {
         id: 'scene-1',
         title: 'Scene 1: Central Datacenter Vault & Security Core',
-        titleUrdu: 'منظر 1: سینٹرل ڈیٹا سینٹر کور اور فائر وال',
+        titleUrdu: 'منظر 1: سینٹرل ڈیٹا سینٹر کور سوئچ اور فائر وال تنصیب',
         focusNodeId: coreNode.id,
         cameraTilt: 20,
         cameraZoom: 1.25,
@@ -1331,12 +1359,12 @@ export const NetworkDeployment3DGraph: React.FC<NetworkDeployment3DGraphProps> =
         opticalPower: 'Layer 3 Wire-Speed',
         speedRating: '100 Gbps Core Trunk',
         narrationEn: `Central Data Center Spine: ${coreNode.name} aggregates traffic and enforces zero-trust security policies before traffic enters the optical distribution headend.`,
-        narrationUr: `مرکزی ڈیٹا سینٹر: ${coreNode.name} تمام کیمپس ٹریفک کو 100G اسپیڈ پر پروسیس کر کے آپٹیکل ہیڈ اینڈ کی طرف بھیجتا ہے۔`
+        narrationUr: `مرحلہ 1 (ڈیٹا سینٹر انسٹالیشن): سب سے پہلے سینٹرل ڈیٹا سینٹر کے رِیک A1 میں 100G کور سوئچ اور فائر وال ماؤنٹ کریں۔ دونوں پاور سپلائیز اور ارتھنگ کنیکٹ کریں تاکہ کیمپس کا تمام ٹریفک 100 گیگابٹ اسپیڈ پر پروسیس ہو کر OLT کی طرف محفوظ طریقے سے جائے۔`
       },
       {
         id: 'scene-2',
         title: 'Scene 2: Headend OLT Laser Modulation',
-        titleUrdu: 'منظر 2: آپٹیکل لائن ٹرمینل (OLT) لیزر موڈولیشن',
+        titleUrdu: 'منظر 2: آپٹیکل لائن ٹرمینل (OLT) چیسس اور لیزر لاؤنچ',
         focusNodeId: oltNode.id,
         cameraTilt: 28,
         cameraZoom: 1.2,
@@ -1345,12 +1373,12 @@ export const NetworkDeployment3DGraph: React.FC<NetworkDeployment3DGraphProps> =
         opticalPower: '+3.5 dBm Tx Power',
         speedRating: '10G XGS-PON SFP+',
         narrationEn: `Headend OLT Chassis: ${oltNode.name} modulates laser light at 1577nm downstream and dynamically assigns DBA bandwidth time slots for up to 1,024 user terminals.`,
-        narrationUr: `ہیڈ اینڈ OLT: ${oltNode.name} 1577nm طولِ موج پر لیزر بیم خارج کرتا ہے اور تمام یوزرز کے لیے ٹائم سلاٹس شیڈول کرتا ہے۔`
+        narrationUr: `مرحلہ 2 (OLT کمیشننگ): رِیک A2 میں OLT چیسس فکس کریں۔ 16-پورٹ XGS-PON کارڈ میں SFP+ آپٹکس لگائیں اور گرین SC/APC کارڈ سے مین ODF تک جوڑیں۔ 1577nm طولِ موج پر +3.5 dBm لیزر سگنل خارج کریں اور OMCI سے یوزرز کے لیے ٹائم سلاٹس شیڈول کریں۔`
       },
       {
         id: 'scene-3',
         title: 'Scene 3: Outside Plant Armored Feeder Backbone',
-        titleUrdu: 'منظر 3: آؤٹ ڈور آرمرڈ فیڈر کیبل بیک بون',
+        titleUrdu: 'منظر 3: انڈر گراؤنڈ آرمرڈ فیڈر کیبل اور فیوژن اسپلائسنگ',
         focusNodeId: feederNode.id,
         cameraTilt: 36,
         cameraZoom: 1.05,
@@ -1359,12 +1387,12 @@ export const NetworkDeployment3DGraph: React.FC<NetworkDeployment3DGraphProps> =
         opticalPower: '-0.35 dB/km Attenuation',
         speedRating: '48-Core Single-Mode Glass',
         narrationEn: `Outside Plant Trunk: ${feederNode.name} carries light pulses across campus underground ducts over 20 kilometers with zero electronic repeaters and zero fire risk.`,
-        narrationUr: `زیرِ زمین فیڈر کیبل: ${feederNode.name} بنا کسی بجلی یا ریپیٹر کے 20 کلومیٹر تک ڈیٹا بیم کو محفوظ طریقے سے کیمپس میں پھیلاتا ہے۔`
+        narrationUr: `مرحلہ 3 (زیرِ زمین فائبر بچھانا): ڈیٹا سینٹر سے مختلف فیکلٹی بلڈنگز تک 48-کور آرمرڈ G.652D فائبر کیبل زیرِ زمین پائپوں میں کھینچیں۔ مین ہولز میں فیوژن اسپلائسر سے جوڑ لگائیں (لاس ≤0.05 dB)۔ یہ بنا کسی ریپیٹر کے 20 کلومیٹر تک محفوظ ڈیٹا لے جاتی ہے۔`
       },
       {
         id: 'scene-4',
         title: 'Scene 4: Vertical Riser Passive Optical Splitters',
-        titleUrdu: 'منظر 4: عمودی بلڈنگ رائزر اور 0-واٹ اسپلٹرز',
+        titleUrdu: 'منظر 4: عمودی بلڈنگ رائزر اور 0-واٹ اسپلٹرز تنصیب',
         focusNodeId: splitterNode.id,
         cameraTilt: 30,
         cameraZoom: 1.15,
@@ -1373,12 +1401,12 @@ export const NetworkDeployment3DGraph: React.FC<NetworkDeployment3DGraphProps> =
         opticalPower: '-13.8 dB Split Loss (0 Watts)',
         speedRating: '1:16 PLC Passive Split',
         narrationEn: `Floor Distribution Riser: ${splitterNode.name} splits the single incoming optical beam into 16 separate office drops with 0 Watts power, generating zero heat in corridors.`,
-        narrationUr: `بلڈنگ رائزر اسپلٹر: ${splitterNode.name} بغیر کسی بجلی کے 0 واٹ پر لیزر بیم کو 16 الگ الگ کمروں کے لیے تقسیم کرتا ہے۔`
+        narrationUr: `مرحلہ 4 (فلور رائزر اسپلٹر): عمارت کے عمودی شافٹ یا چھوٹی کیبنٹ میں غیر پاورڈ 1:16 PLC اسپلٹر لگائیں۔ اسے کسی بجلی، UPS یا AC کی ضرورت نہیں ہوتی (0 واٹ)۔ یہ ایک فائبر کی لیزر بیم کو 16 کمروں کے لیے تقسیم کرتا ہے اور کوریڈور سوئچ رومز ختم ہو جاتے ہیں۔`
       },
       {
         id: 'scene-5',
         title: 'Scene 5: Edge Optical Network Unit (Panel ONU)',
-        titleUrdu: 'منظر 5: یوزر ڈیسک پینل ONU اور PoE++',
+        titleUrdu: 'منظر 5: یوزر ڈیسک پینل ONU اور وال آؤٹ لیٹ ماؤنٹنگ',
         focusNodeId: onuNode.id,
         cameraTilt: 25,
         cameraZoom: 1.25,
@@ -1387,12 +1415,12 @@ export const NetworkDeployment3DGraph: React.FC<NetworkDeployment3DGraphProps> =
         opticalPower: '-18.2 dBm Rx Sensitivity',
         speedRating: '4x Gigabit LAN + PoE++',
         narrationEn: `Office Terminal: ${onuNode.name} terminates bend-insensitive G.657 glass fiber into user desks, delivering Gigabit Ethernet and PoE power with silent fanless operation.`,
-        narrationUr: `ڈیسک ٹرمینل: ${onuNode.name} دیوار کے ساکٹ میں فٹ ہو کر فائبر کو گیگابٹ نیٹ ورک اور PoE بجلی میں تبدیل کرتا ہے۔`
+        narrationUr: `مرحلہ 5 (ڈیسک ٹرمینل لگانا): کمرے کے 86-ٹائپ وال ساکٹ میں بینڈ-انسینسیٹو G.657A2 فائبر لائیں۔ پینل ONU ماؤنٹ کریں اور پاور میٹر سے چیک کریں کہ سگنل لیول -15 dBm سے -24 dBm کے درمیان ہو۔ یہ ڈیوائس یوزر کو گیگابٹ ایتھرنیٹ اور 90W PoE بجلی فراہم کرتی ہے۔`
       },
       {
         id: 'scene-6',
         title: 'Scene 6: Multi-Service User Endpoints in Action',
-        titleUrdu: 'منظر 6: اینڈ پوائنٹ ڈیوائسز (Wi-Fi 7، کیمرے، پی سی)',
+        titleUrdu: 'منظر 6: اینڈ پوائنٹ ڈیوائسز (Wi-Fi 7، کیمرے، پی سی) اور کٹ اوور',
         focusNodeId: endpointNode.id,
         cameraTilt: 20,
         cameraZoom: 1.3,
@@ -1401,7 +1429,7 @@ export const NetworkDeployment3DGraph: React.FC<NetworkDeployment3DGraphProps> =
         opticalPower: 'Wire-Speed Non-Blocking',
         speedRating: '1G / 2.5G / 10G Delivery',
         narrationEn: `Service Handover: ${endpointNode.name} receives high-speed connectivity with sub-millisecond latency, completing the end-to-end all-optical deployment lifecycle.`,
-        narrationUr: `سروس ڈیلیوری: ${endpointNode.name} بغیر کسی تعطل کے تیز رفتار ڈیٹا حاصل کر رہی ہے اور روایتی سوئچ رومز مکمل طور پر ختم ہو چکے ہیں۔`
+        narrationUr: `مرحلہ 6 (سروس ڈیلیوری اور ٹیسٹنگ): Cat6A پیچ کارڈ سے Wi-Fi 7 ایکسس پوائنٹ، پی سی، آئی پی فون اور کیمرے جوڑیں۔ پنگ اور OMCI اسٹیٹس چیک کریں۔ ڈیپلائمنٹ مکمل، زیرو ایکٹیو سوئچ رومز اور 70% بجلی کی بچت کے ساتھ 30 سالہ مستقبل محفوظ ہو گیا۔`
       }
     ];
   }, [env]);
@@ -1430,6 +1458,39 @@ export const NetworkDeployment3DGraph: React.FC<NetworkDeployment3DGraphProps> =
     }
   };
 
+  // Web Speech API voice synthesis for Urdu and English spoken instructions
+  const speakNarration = (lang: 'ur' | 'en' = 'ur') => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const current = videoTourScenes[videoSceneIndex] || videoTourScenes[0];
+    const text = lang === 'ur' ? current.narrationUr : current.narrationEn;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = lang === 'ur' ? 0.92 : 1.0;
+    utterance.lang = lang === 'ur' ? 'ur-PK' : 'en-US';
+
+    try {
+      const voices = window.speechSynthesis.getVoices();
+      if (lang === 'ur') {
+        const urduVoice = voices.find(v => v.lang.startsWith('ur') || v.lang.startsWith('hi'));
+        if (urduVoice) utterance.voice = urduVoice;
+      }
+    } catch {
+      // fallback
+    }
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
   const handleSelectScene = (sceneIdx: number) => {
     setVideoSceneIndex(sceneIdx);
     const targetScene = videoTourScenes[sceneIdx];
@@ -1438,6 +1499,9 @@ export const NetworkDeployment3DGraph: React.FC<NetworkDeployment3DGraphProps> =
       setPitchAngle(targetScene.cameraTilt);
       setZoomLevel(targetScene.cameraZoom);
       playLaserBeep(650 + sceneIdx * 80);
+      if (urduVoiceActive) {
+        speakNarration('ur');
+      }
     }
   };
 
@@ -1467,16 +1531,18 @@ export const NetworkDeployment3DGraph: React.FC<NetworkDeployment3DGraphProps> =
   const handleStartVideoTour = (sceneIdx: number = 0) => {
     setIsVideoTourMode(true);
     setIsVideoPlaying(true);
+    setIsFullPageCinemaOpen(true);
     setViewAngle('3d-isometric');
     handleSelectScene(sceneIdx);
-    document.getElementById('network-3d-interactive-canvas')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleExitVideoTour = () => {
     setIsVideoTourMode(false);
     setIsVideoPlaying(false);
+    setIsFullPageCinemaOpen(false);
     setPitchAngle(24);
     setZoomLevel(1.0);
+    stopSpeaking();
   };
 
   const handleToggleVideoPlay = () => {
@@ -2032,33 +2098,78 @@ interface gpon-olt_1/1/1
           </div>
         )}
 
-        {/* Zoom Controls */}
-        <div className="flex items-center gap-1.5">
+        {/* Zoom Controls: Min 20% (0.2x) to Max 200% (2.0x) */}
+        <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-slate-400 font-medium text-[11px]">Zoom:</span>
           <button
-            onClick={() => setZoomLevel(prev => Math.max(0.75, prev - 0.1))}
-            title="Zoom out"
-            className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-600 text-slate-300 cursor-pointer"
+            onClick={() => setZoomLevel(prev => Math.max(0.2, Number((prev - 0.1).toFixed(2))))}
+            disabled={zoomLevel <= 0.2}
+            title="Zoom out (Min 20%)"
+            className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 cursor-pointer"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
-          <span className="font-mono text-[11px] text-slate-300 w-10 text-center">
+          
+          <input
+            type="range"
+            min="0.2"
+            max="2.0"
+            step="0.05"
+            value={zoomLevel}
+            onChange={e => setZoomLevel(parseFloat(e.target.value))}
+            className="w-16 sm:w-24 accent-cyan-400 cursor-pointer"
+            title={`Current Zoom: ${Math.round(zoomLevel * 100)}% (Min 20% - Max 200%)`}
+          />
+
+          <span className="font-mono text-[11px] text-cyan-300 w-11 text-center font-bold">
             {Math.round(zoomLevel * 100)}%
           </span>
+
           <button
-            onClick={() => setZoomLevel(prev => Math.min(1.35, prev + 0.1))}
-            title="Zoom in"
-            className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-600 text-slate-300 cursor-pointer"
+            onClick={() => setZoomLevel(prev => Math.min(2.0, Number((prev + 0.1).toFixed(2))))}
+            disabled={zoomLevel >= 2.0}
+            title="Zoom in (Max 200%)"
+            className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 cursor-pointer"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
-          <button
-            onClick={() => setZoomLevel(1.0)}
-            title="Reset Zoom"
-            className="px-2 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[10px] text-slate-400 hover:text-slate-200 cursor-pointer"
-          >
-            Reset
-          </button>
+
+          {/* Quick Zoom Presets */}
+          <div className="hidden sm:flex items-center gap-1 ml-1">
+            <button
+              onClick={() => setZoomLevel(0.2)}
+              title="Minimum Zoom 20%"
+              className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer ${
+                Math.round(zoomLevel * 100) === 20
+                  ? 'bg-cyan-500/30 text-cyan-300 font-bold border border-cyan-400'
+                  : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              20%
+            </button>
+            <button
+              onClick={() => setZoomLevel(1.0)}
+              title="Standard Zoom 100%"
+              className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer ${
+                Math.round(zoomLevel * 100) === 100
+                  ? 'bg-cyan-500/30 text-cyan-300 font-bold border border-cyan-400'
+                  : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              100%
+            </button>
+            <button
+              onClick={() => setZoomLevel(2.0)}
+              title="Maximum Zoom 200%"
+              className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer ${
+                Math.round(zoomLevel * 100) === 200
+                  ? 'bg-cyan-500/30 text-cyan-300 font-bold border border-cyan-400'
+                  : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              200%
+            </button>
+          </div>
         </div>
 
         {/* Laser Pulse Control & Fullscreen 3D */}
@@ -2111,8 +2222,38 @@ interface gpon-olt_1/1/1
               </div>
             </div>
 
-            {/* Right Controls: Speed, Audio, Exit */}
-            <div className="flex items-center gap-2 self-end sm:self-auto">
+            {/* Right Controls: Speed, Audio, Urdu Voice, Urdu Guide, Exit */}
+            <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
+              {/* Urdu Audio Speech Toggle */}
+              <button
+                onClick={() => {
+                  if (isSpeaking) {
+                    stopSpeaking();
+                  } else {
+                    speakNarration('ur');
+                  }
+                }}
+                title={isSpeaking ? 'وقف کریں (Stop Voice)' : 'اردو میں سنیں (Listen Urdu Voice Narration)'}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                  isSpeaking
+                    ? 'bg-emerald-500/30 text-emerald-300 border-emerald-400 ring-2 ring-emerald-400 shadow-lg shadow-emerald-950/60'
+                    : 'bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 border-emerald-500/40'
+                }`}
+              >
+                <Volume2 className={`w-3.5 h-3.5 ${isSpeaking ? 'animate-bounce text-emerald-300' : 'text-emerald-400'}`} />
+                <span>{isSpeaking ? 'وقف (Stop Voice)' : '🔊 آواز سنیں (Urdu Voice)'}</span>
+              </button>
+
+              {/* Urdu Deployment Guide Handbook Modal Trigger */}
+              <button
+                onClick={() => setIsUrduGuideModalOpen(true)}
+                title="مکمل اردو ڈیپلائمنٹ گائیڈ (Complete Urdu Deployment Handbook)"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-600/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-colors cursor-pointer shadow-sm"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+                <span>📖 مکمل اردو گائیڈ</span>
+              </button>
+
               {/* Speed Selector */}
               <div className="flex items-center bg-slate-950 rounded-lg border border-slate-800 p-0.5 text-[11px] font-mono">
                 {[0.75, 1, 1.5, 2].map(speed => (
@@ -2133,7 +2274,7 @@ interface gpon-olt_1/1/1
               {/* Audio Synth Toggle */}
               <button
                 onClick={() => setIsVideoAudioMuted(!isVideoAudioMuted)}
-                title={isVideoAudioMuted ? 'Unmute Audio Synthesis' : 'Mute Audio Synthesis'}
+                title={isVideoAudioMuted ? 'Unmute Beeps' : 'Mute Beeps'}
                 className={`p-2 rounded-lg border transition-colors cursor-pointer ${
                   !isVideoAudioMuted
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
@@ -2475,6 +2616,44 @@ interface gpon-olt_1/1/1
                 <p className="text-xs sm:text-sm text-amber-200 leading-relaxed font-urdu text-right border-t border-slate-800/80 pt-1.5" dir="rtl">
                   {currentScene.narrationUr}
                 </p>
+
+                {/* Interactive Audio Voice & Urdu Guide Action Bar */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        if (isSpeaking) {
+                          stopSpeaking();
+                        } else {
+                          speakNarration('ur');
+                        }
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        isSpeaking
+                          ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400 ring-1 ring-emerald-400 shadow-md'
+                          : 'bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-500/40'
+                      }`}
+                    >
+                      <Volume2 className={`w-3.5 h-3.5 ${isSpeaking ? 'animate-bounce text-emerald-300' : 'text-emerald-400'}`} />
+                      <span>{isSpeaking ? 'وقف (Stop Voice)' : '🔊 اردو میں سنیں (Speak Urdu)'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => speakNarration('en')}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-medium cursor-pointer"
+                    >
+                      <span>🔊 English Voice</span>
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setIsUrduGuideModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500/20 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-600/30 text-amber-300 border border-amber-500/40 text-xs font-bold cursor-pointer transition-colors"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+                    <span>📖 مکمل اردو گائیڈ (Deployment Manual)</span>
+                  </button>
+                </div>
               </div>
             </div>
           </>
@@ -2922,6 +3101,47 @@ interface gpon-olt_1/1/1
                 <Film className="w-3.5 h-3.5 text-rose-400" />
                 <span>{isVideoTourMode ? 'Exit Video Tour' : 'Play 3D Video Tour'}</span>
               </button>
+              {/* Zoom Controls inside Fullscreen: Min 20% to Max 200% */}
+              <div className="hidden md:flex items-center gap-1.5 bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-800">
+                <span className="text-slate-400 font-medium text-[11px]">Zoom:</span>
+                <button
+                  onClick={() => setZoomLevel(prev => Math.max(0.2, Number((prev - 0.1).toFixed(2))))}
+                  disabled={zoomLevel <= 0.2}
+                  title="Zoom out (Min 20%)"
+                  className="p-1 rounded bg-slate-950 border border-slate-800 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:border-slate-700 cursor-pointer"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </button>
+                <input
+                  type="range"
+                  min="0.2"
+                  max="2.0"
+                  step="0.05"
+                  value={zoomLevel}
+                  onChange={e => setZoomLevel(parseFloat(e.target.value))}
+                  className="w-20 accent-cyan-400 cursor-pointer"
+                  title={`Zoom: ${Math.round(zoomLevel * 100)}% (20% - 200%)`}
+                />
+                <span className="font-mono text-[11px] text-cyan-300 w-10 text-center font-bold">
+                  {Math.round(zoomLevel * 100)}%
+                </span>
+                <button
+                  onClick={() => setZoomLevel(prev => Math.min(2.0, Number((prev + 0.1).toFixed(2))))}
+                  disabled={zoomLevel >= 2.0}
+                  title="Zoom in (Max 200%)"
+                  className="p-1 rounded bg-slate-950 border border-slate-800 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:border-slate-700 cursor-pointer"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setZoomLevel(1.0)}
+                  className="px-1.5 py-0.5 rounded text-[10px] bg-slate-950 border border-slate-800 text-slate-400 hover:text-white cursor-pointer"
+                  title="Reset to 100%"
+                >
+                  100%
+                </button>
+              </div>
+
               <button
                 onClick={() => setIsLaserSimulating(!isLaserSimulating)}
                 className="px-3 py-1.5 rounded-lg text-xs bg-slate-900 border border-slate-800 text-slate-300 hover:text-white cursor-pointer"
@@ -3049,6 +3269,819 @@ interface gpon-olt_1/1/1
           <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-center justify-between mt-3 shrink-0">
             <span>Selected Device: <strong className="text-white">{selectedNode.name}</strong> ({selectedNode.modelExample})</span>
             <span className="font-mono text-cyan-400">Click any device to inspect</span>
+          </div>
+        </div>
+      )}
+
+      {/* COMPREHENSIVE URDU DEPLOYMENT HANDBOOK MODAL (مکمل اردو ڈیپلائمنٹ گائیڈ) */}
+      {isUrduGuideModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-3 sm:p-6 overflow-y-auto animate-fadeIn">
+          <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col bg-slate-900 border-2 border-amber-500/50 rounded-3xl shadow-2xl overflow-hidden text-slate-100">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-amber-950/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center shrink-0">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold uppercase">
+                      ITU-T G.9807.1 Compliant
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      IUB Directorate of IT
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                      0-Watt Passive ODN
+                    </span>
+                  </div>
+                  <h3 className="text-base sm:text-xl font-extrabold text-white mt-1 font-urdu" dir="rtl">
+                    آل آپٹیکل کیمپس نیٹ ورک ڈیپلائمنٹ گائیڈ (اردو میں مکمل مرحلہ وار گائیڈ)
+                  </h3>
+                  <p className="text-xs text-slate-400 font-mono">
+                    All-Optical Campus Network Field Engineering & Implementation Standard
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (isSpeaking) {
+                      stopSpeaking();
+                    } else {
+                      speakNarration('ur');
+                    }
+                  }}
+                  className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    isSpeaking
+                      ? 'bg-emerald-500/30 text-emerald-300 border-emerald-400 ring-1 ring-emerald-400'
+                      : 'bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 border-emerald-500/40'
+                  }`}
+                >
+                  <Volume2 className="w-4 h-4" />
+                  <span>{isSpeaking ? 'وقف (Stop)' : '🔊 سنیں (Speak)'}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    stopSpeaking();
+                    setIsUrduGuideModalOpen(false);
+                  }}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600 cursor-pointer"
+                  title="Close Guide"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+              {/* Executive Overview in Urdu */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-slate-900 to-emerald-950/30 border border-cyan-500/30 space-y-2">
+                <h4 className="text-sm font-bold text-cyan-300 flex items-center justify-end gap-2 font-urdu" dir="rtl">
+                  <span>خلاصہ اور بنیادی اصول (Core Architecture Philosophy)</span>
+                  <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-urdu text-right" dir="rtl">
+                  آل آپٹیکل (FTTO/POL) نیٹ ورک کا سب سے بڑا فائدہ یہ ہے کہ عمارت کے ہر فلور پر بنے مہنگے سوئچ رومز، UPS کی بیٹریاں اور AC مستقل طور پر ختم ہو جاتے ہیں۔ سینٹرل ڈیٹا سینٹر میں ایک OLT چیسس رکھی جاتی ہے اور وہاں سے سنگل موڈ گلاس فائبر زیرِ زمین پائپوں اور عمودی رائزر میں لگے <strong>0-واٹ کے آپٹیکل اسپلٹرز</strong> کے ذریعے سیدھا یوزرز کے ڈیسک پینل ONU تک پہنچتی ہے۔ اس سے بجلی کی <strong>70% بچت</strong> ہوتی ہے اور فائبر کی لائف <strong>30 سال</strong> ہوتی ہے۔
+                </p>
+              </div>
+
+              {/* 6 Step-by-Step Deployment Protocols */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span>6 مرحلہ وار تنصیب کے احکامات (Step-by-Step Deployment Stages)</span>
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Stage 1 */}
+                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs">
+                      <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono font-bold">
+                        مرحلہ 1
+                      </span>
+                      <span className="font-bold text-white font-urdu" dir="rtl">سینٹرل ڈیٹا سینٹر و سیکیورٹی فائر وال</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed font-urdu text-right" dir="rtl">
+                      مرکزی ڈیٹا سینٹر کے رِیک A1 میں 100G کور سوئچ (جیسے CloudEngine 8851) اور نیکسٹ جنریشن فائر وال ماؤنٹ کریں۔ دونوں AC/DC پاور سپلائیز کنیکٹ کریں اور گراؤنڈنگ کیبل چیک کریں کہ ریزسٹنس 1 اوم سے کم ہو۔ یہ تمام کیمپس کی ٹریفک اور زیرو-ٹرسٹ پالیسی کو سنبھالتا ہے۔
+                    </p>
+                    <div className="p-2 rounded bg-slate-900 border border-slate-800 text-[11px] font-mono text-cyan-300">
+                      ٹیسٹنگ معیار: ڈوئل پاور ریڈنڈنسی + 100G ٹرنک لنک اپ
+                    </div>
+                  </div>
+
+                  {/* Stage 2 */}
+                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs">
+                      <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono font-bold">
+                        مرحلہ 2
+                      </span>
+                      <span className="font-bold text-white font-urdu" dir="rtl">آپٹیکل لائن ٹرمینل (OLT) چیسس و لاؤنچ پاور</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed font-urdu text-right" dir="rtl">
+                      رِیک A2 میں OLT چیسس فکس کریں۔ 16-پورٹ XGS-PON کارڈ میں Class N1 SFP+ ٹرانسیسیور لگائیں۔ آپٹیکل پاور میٹر سے 1577nm پر چیک کریں کہ لیزر لاؤنچ پاور <strong>+3.5 dBm تا +5.0 dBm</strong> ہو۔ گرین SC/APC کارڈ سے مین ODF بلک ہیڈ تک کنکشن کریں۔
+                    </p>
+                    <div className="p-2 rounded bg-slate-900 border border-slate-800 text-[11px] font-mono text-rose-300">
+                      ٹیسٹنگ معیار: OLT لاؤنچ پاور = +3.5 dBm (Class N1/N2)
+                    </div>
+                  </div>
+
+                  {/* Stage 3 */}
+                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs">
+                      <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold">
+                        مرحلہ 3
+                      </span>
+                      <span className="font-bold text-white font-urdu" dir="rtl">زیرِ زمین 48-کور آرمرڈ فیڈر فائبر بچھانا</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed font-urdu text-right" dir="rtl">
+                      ڈیٹا سینٹر سے مختلف ڈیپارٹمنٹس اور فیکلٹی بلاکس تک 48-کور آرمرڈ G.652D فائبر زیرِ زمین پائپوں میں پل کریں۔ مین ہولز اور FDH کیبنٹس میں فیوژن اسپلائسر سے جوڑ لگائیں۔ ہر جوڑ کا نقصان لازماً <strong>0.05 dB سے کم</strong> ہونا چاہیے۔
+                    </p>
+                    <div className="p-2 rounded bg-slate-900 border border-slate-800 text-[11px] font-mono text-amber-300">
+                      ٹیسٹنگ معیار: فیوژن اسپلائس لاس ≤ 0.05 dB فی جوڑ
+                    </div>
+                  </div>
+
+                  {/* Stage 4 */}
+                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs">
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">
+                        مرحلہ 4
+                      </span>
+                      <span className="font-bold text-white font-urdu" dir="rtl">بلڈنگ فلور رائزر میں غیر پاورڈ 1:16 اسپلٹر</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed font-urdu text-right" dir="rtl">
+                      عمارت کے عمودی ڈکٹ / رائزر کیبنٹ میں غیر پاورڈ 1:16 PLC اسپلٹر فکس کریں۔ یاد رہے کہ اس اسپلٹر کو کسی بجلی، بیٹری یا AC کی ضرورت نہیں (0 واٹ)۔ یہ ایک فائبر کی لیزر بیم کو 16 کمروں کے لیے تقسیم کرتا ہے جس کا متوقع نقصان <strong>13.8 dB</strong> ہے۔
+                    </p>
+                    <div className="p-2 rounded bg-slate-900 border border-slate-800 text-[11px] font-mono text-emerald-300">
+                      ٹیسٹنگ معیار: اسپلٹر انسرشن لاس = 13.8 dB (0 واٹ پاور)
+                    </div>
+                  </div>
+
+                  {/* Stage 5 */}
+                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs">
+                      <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono font-bold">
+                        مرحلہ 5
+                      </span>
+                      <span className="font-bold text-white font-urdu" dir="rtl">یوزر ڈیسک پینل ONU ماؤنٹنگ و سگنل ٹیسٹ</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed font-urdu text-right" dir="rtl">
+                      کمرے کے 86-ٹائپ وال ساکٹ میں لچکدار G.657A2 فائبر لائیں۔ گرین SC/APC فیرول کو ون-کلک پین سے صاف کریں۔ پینل ONU ماؤنٹ کرنے سے پہلے آپٹیکل پاور میٹر سے سگنل چیک کریں: یہ لازماً <strong>-15 dBm تا -24 dBm</strong> کے درمیان ہونا چاہیے۔
+                    </p>
+                    <div className="p-2 rounded bg-slate-900 border border-slate-800 text-[11px] font-mono text-purple-300">
+                      ٹیسٹنگ معیار: Rx آپٹیکل پاور = -15 dBm تا -24 dBm (حساسیت: -28 dBm)
+                    </div>
+                  </div>
+
+                  {/* Stage 6 */}
+                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs">
+                      <span className="px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 font-mono font-bold">
+                        مرحلہ 6
+                      </span>
+                      <span className="font-bold text-white font-urdu" dir="rtl">اینڈ پوائنٹس کنکشن، Wi-Fi 7 و فائنل کٹ اوور</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed font-urdu text-right" dir="rtl">
+                      پینل ONU کی گیگابٹ پورٹس سے Cat6A کیبل کے ذریعے Wi-Fi 7 ایکسس پوائنٹس، آئی پی کیمرے، آئی پی فونز اور پی سی جوڑیں۔ OMCI سے VLAN کنفیگریشن چیک کریں اور ٹریفک کامیابی سے رواں کریں۔
+                    </p>
+                    <div className="p-2 rounded bg-slate-900 border border-slate-800 text-[11px] font-mono text-teal-300">
+                      ٹیسٹنگ معیار: 0% پیکٹ لاس + سب-ملی سیکنڈ لیٹنسی
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Necessary Toolkit Checklist in Urdu */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                <h4 className="text-sm font-bold text-amber-300 flex items-center justify-end gap-2 font-urdu" dir="rtl">
+                  <span>فیلڈ انجینئرنگ ٹول کٹ چیک لسٹ (Required Optical Toolkit)</span>
+                  <Wrench className="w-4 h-4 text-amber-400" />
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs font-urdu text-right" dir="rtl">
+                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-200">
+                    1. آپٹیکل پاور میٹر (OPM)
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-200">
+                    2. فیوژن اسپلائسنگ مشین
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-200">
+                    3. پریزیشن فائبر کلیور
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-200">
+                    4. ون-کلک 2.5mm کلیننگ پین
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-200">
+                    5. OTDR ٹیسٹر (برائے فالٹ لوکیشن)
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-200">
+                    6. لیزر سورس اور ویژول فالٹ لوکیٹر
+                  </div>
+                </div>
+              </div>
+
+              {/* Troubleshooting Quick Fixes in Urdu */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-rose-950/20 border border-rose-500/30 space-y-3">
+                <h4 className="text-sm font-bold text-rose-300 flex items-center justify-end gap-2 font-urdu" dir="rtl">
+                  <span>عام غلطیاں اور ان کا فوری حل (Troubleshooting Guide)</span>
+                  <AlertTriangle className="w-4 h-4 text-rose-400" />
+                </h4>
+                <div className="space-y-2 text-xs text-slate-300 font-urdu text-right" dir="rtl">
+                  <p className="leading-relaxed">
+                    <strong>1. ریڈ لائٹ (LOS Red LED):</strong> اگر ONU پر سرخ بتی جل رہی ہے تو اس کا مطلب ہے فائبر میں سگنل کٹ گیا ہے۔ آپٹیکل پاور میٹر لگا کر چیک کریں کہ آیا ODF یا اسپلٹر کی پورٹ سے سگنل آ رہا ہے۔ اگر نہیں تو OTDR سے چیک کریں کہ کیبل کہاں سے ٹوٹی ہے۔
+                  </p>
+                  <p className="leading-relaxed">
+                    <strong>2. سگنل کا کمزور ہونا (Loss &gt; -26 dBm):</strong> 90% کیسز میں کنیکٹر کے سرے پر مٹی یا انگلی کی چکنائی ہوتی ہے۔ کبھی بھی کپڑے سے صاف نہ کریں؛ صرف الکحل-فری ون-کلک پین سے صاف کریں۔
+                  </p>
+                  <p className="leading-relaxed">
+                    <strong>3. بینڈ ریڈیس کی پابندی:</strong> فائبر کیبل کو کبھی بھی 90 ڈگری کے تیز زاویے پر نہ موڑیں۔ بینڈ ریڈیس کم از کم 7.5 ملی میٹر ہونا چاہیے۔
+                  </p>
+                </div>
+              </div>
+
+              {/* Sample Huawei CLI Configuration */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 font-mono text-xs">
+                <div className="flex items-center justify-between text-slate-400">
+                  <span className="text-amber-400 font-bold">Huawei SmartAX EA5800 OLT Configuration Sample</span>
+                  <span className="text-[10px] text-slate-500">CLI Template</span>
+                </div>
+                <pre className="p-3 rounded-xl bg-slate-900 text-cyan-300 overflow-x-auto text-[11px] leading-relaxed border border-slate-800">
+{`! Huawei EA5800 XGS-PON Commissioning
+interface gpon 0/1
+ port 0 ont-auto-find enable
+! Add ONT with Serial Number & Profiles
+ont add 0 1 sn-auth "48575443DEADBEEF" omci ont-lineprofile-id 20 ont-srvprofile-id 20
+! Configure Service Port for Campus Faculty VLAN
+service-port 100 vlan 100 gpon 0/1/0 ont 1 gemport 1 multi-service user-vlan 100 tag-transform translate
+commit`}
+                </pre>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 sm:p-6 border-t border-slate-800 bg-slate-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="text-xs text-slate-400 font-mono">
+                Directorate of IT · The Islamia University of Bahawalpur (IUB)
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (isSpeaking) {
+                      stopSpeaking();
+                    } else {
+                      speakNarration('ur');
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <Volume2 className="w-4 h-4" />
+                  <span>{isSpeaking ? 'آواز بند کریں (Stop Voice)' : 'اردو میں سنیں (Listen Voice)'}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    stopSpeaking();
+                    setIsUrduGuideModalOpen(false);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs border border-slate-600 cursor-pointer"
+                >
+                  بند کریں (Close)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          FULL PAGE SIZE LIVE 4K CINEMATIC 3D FLYTHROUGH VIDEO THEATER
+          Triggered when user clicks the video icon or 3D Video Tour buttons
+         ========================================================================= */}
+      {isFullPageCinemaOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-slate-950 text-slate-100 select-none overflow-hidden animate-fadeIn">
+          {/* Top Cinema Director HUD Bar */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 sm:px-6 py-2.5 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-b border-rose-500/50 shadow-2xl shrink-0 z-40">
+            {/* Left Branding & Scene Title */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/50 flex items-center justify-center shrink-0 shadow-lg shadow-rose-950/60">
+                <Film className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping shrink-0" />
+                  <span className="text-xs font-mono font-extrabold text-rose-400 uppercase tracking-widest">
+                    LIVE 4K CINEMATIC 3D FLYTHROUGH VIDEO
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-rose-500/20 text-[10px] border border-rose-500/40 text-rose-300 font-mono font-bold">
+                    4K ULTRA HD · 60 FPS
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/40 font-mono">
+                    {env.name}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <h3 className="text-sm sm:text-base font-bold text-white">
+                    {currentScene.title}
+                  </h3>
+                  <span className="text-xs text-amber-300 font-mono font-bold">
+                    [{currentScene.timestamp}]
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Center: Cinema View Mode Switcher & Transport Controls */}
+            <div className="flex items-center gap-2 justify-center flex-wrap">
+              {/* Cinema Mode Switcher: 4K Drone Flythrough vs 3D Schematic vs Dual Split */}
+              <div className="flex items-center bg-slate-900 rounded-xl border border-slate-800 p-1 text-xs font-medium">
+                <button
+                  onClick={() => setCinemaViewMode('flythrough')}
+                  title="Photorealistic 4K Campus Aerial Video with AR Optical Paths"
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    cinemaViewMode === 'flythrough'
+                      ? 'bg-rose-500 text-white font-bold shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Film className="w-3.5 h-3.5" />
+                  <span>4K Flythrough Video</span>
+                </button>
+                <button
+                  onClick={() => setCinemaViewMode('schematic')}
+                  title="Pure 3D Isometric All-Optical Network Layout"
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    cinemaViewMode === 'schematic'
+                      ? 'bg-cyan-500 text-slate-950 font-bold shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>3D Schematic Layout</span>
+                </button>
+                <button
+                  onClick={() => setCinemaViewMode('split')}
+                  title="Dual Director View: 4K Video + 3D Twin"
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    cinemaViewMode === 'split'
+                      ? 'bg-amber-400 text-slate-950 font-bold shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Monitor className="w-3.5 h-3.5" />
+                  <span>Dual Split View</span>
+                </button>
+              </div>
+
+              {/* Player Transport Controls */}
+              <div className="flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded-xl border border-slate-800">
+                <button
+                  onClick={handlePrevVideoScene}
+                  title="Previous Scene (Left Arrow)"
+                  className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white cursor-pointer transition-colors"
+                >
+                  <Rewind className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={handleToggleVideoPlay}
+                  title={isVideoPlaying ? 'Pause Video (Spacebar)' : 'Play Video (Spacebar)'}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs shadow-md cursor-pointer transition-all active:scale-95"
+                >
+                  {isVideoPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                  <span>{isVideoPlaying ? 'PAUSE' : 'PLAY'}</span>
+                </button>
+
+                <button
+                  onClick={handleNextVideoScene}
+                  title="Next Scene (Right Arrow)"
+                  className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white cursor-pointer transition-colors"
+                >
+                  <FastForward className="w-4 h-4" />
+                </button>
+
+                {/* Speed Selector */}
+                <div className="flex items-center bg-slate-950 rounded-lg p-0.5 text-[10px] font-mono ml-1">
+                  {[0.75, 1, 1.5, 2].map(speed => (
+                    <button
+                      key={speed}
+                      onClick={() => setVideoPlaybackSpeed(speed)}
+                      className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
+                        videoPlaybackSpeed === speed
+                          ? 'bg-rose-500/30 text-rose-300 font-bold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {speed}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Controls: Zoom Range, Subtitle Toggle, Urdu Voice, Exit */}
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {/* Zoom Slider: Min 20% to Max 200% */}
+              <div className="hidden sm:flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded-xl border border-slate-800 text-[11px]">
+                <span className="text-slate-400 font-medium">Zoom:</span>
+                <button
+                  onClick={() => setZoomLevel(prev => Math.max(0.2, Number((prev - 0.1).toFixed(2))))}
+                  disabled={zoomLevel <= 0.2}
+                  title="Zoom Out (Min 20%)"
+                  className="p-1 rounded bg-slate-950 border border-slate-800 text-slate-300 disabled:opacity-40 hover:border-slate-700 cursor-pointer"
+                >
+                  <ZoomOut className="w-3 h-3" />
+                </button>
+                <input
+                  type="range"
+                  min="0.2"
+                  max="2.0"
+                  step="0.05"
+                  value={zoomLevel}
+                  onChange={e => setZoomLevel(parseFloat(e.target.value))}
+                  className="w-16 accent-cyan-400 cursor-pointer"
+                  title={`Zoom: ${Math.round(zoomLevel * 100)}% (20% to 200%)`}
+                />
+                <span className="font-mono text-cyan-300 font-bold w-9 text-center text-[10px]">
+                  {Math.round(zoomLevel * 100)}%
+                </span>
+                <button
+                  onClick={() => setZoomLevel(prev => Math.min(2.0, Number((prev + 0.1).toFixed(2))))}
+                  disabled={zoomLevel >= 2.0}
+                  title="Zoom In (Max 200%)"
+                  className="p-1 rounded bg-slate-950 border border-slate-800 text-slate-300 disabled:opacity-40 hover:border-slate-700 cursor-pointer"
+                >
+                  <ZoomIn className="w-3 h-3" />
+                </button>
+              </div>
+
+              {/* Subtitles Toggle Button (CC) */}
+              <button
+                onClick={() => setIsSubtitleVisible(!isSubtitleVisible)}
+                title={isSubtitleVisible ? 'Hide Subtitles for 100% Full View' : 'Show Narration Subtitles'}
+                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold transition-all border cursor-pointer ${
+                  isSubtitleVisible
+                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400'
+                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                }`}
+              >
+                <span>CC</span>
+                <span className="text-[10px]">{isSubtitleVisible ? 'ON' : 'OFF'}</span>
+              </button>
+
+              {/* Urdu Audio Speech Voice Button */}
+              <button
+                onClick={() => {
+                  if (isSpeaking) {
+                    stopSpeaking();
+                  } else {
+                    speakNarration('ur');
+                  }
+                }}
+                title={isSpeaking ? 'وقف (Stop Voice)' : 'اردو میں سنیں (Listen Urdu Voice Narration)'}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                  isSpeaking
+                    ? 'bg-emerald-500/30 text-emerald-300 border-emerald-400 ring-2 ring-emerald-400 shadow-md'
+                    : 'bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 border-emerald-500/40'
+                }`}
+              >
+                <Volume2 className={`w-3.5 h-3.5 ${isSpeaking ? 'animate-bounce text-emerald-300' : 'text-emerald-400'}`} />
+                <span>{isSpeaking ? 'وقف (Stop)' : '🔊 آواز (Urdu Voice)'}</span>
+              </button>
+
+              {/* Exit Cinema Fullscreen */}
+              <button
+                onClick={handleExitVideoTour}
+                title="Exit Full Page Cinema (Escape)"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-rose-950/70 hover:border-rose-500/70 text-slate-200 hover:text-white border border-slate-700 text-xs font-bold cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4 text-rose-400" />
+                <span>Exit (Esc)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Scenario Picker Ribbon */}
+          <div className="py-1.5 px-4 sm:px-6 flex items-center gap-2 overflow-x-auto shrink-0 bg-slate-900/90 border-b border-slate-800/80 text-xs">
+            <span className="text-slate-400 font-mono text-[10px] shrink-0 font-bold uppercase">
+              Select Architecture:
+            </span>
+            {(['university', 'hospital', 'industry', 'large-campus', 'small-campus', 'building', 'office'] as const).map(k => {
+              const d = ENVIRONMENTS_DATA[k];
+              const isCur = activeEnvKey === k;
+              return (
+                <button
+                  key={k}
+                  onClick={() => {
+                    setActiveEnvKey(k);
+                    const fn = d.nodes[0];
+                    if (fn) setSelectedNodeId(fn.id);
+                  }}
+                  className={`px-2.5 py-0.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer border ${
+                    isCur
+                      ? 'bg-rose-500/20 border-rose-400 text-rose-300 font-bold shadow-sm'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {d.name.split(' (')[0]}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Main Cinema Viewport (Properly bounded so nothing is cut off) */}
+          <div className="flex-1 relative overflow-hidden bg-slate-950 flex flex-col justify-center items-center">
+            {/* ==============================================================
+                MODE 1: 4K PHOTOREALISTIC CAMPUS FLYTHROUGH VIDEO
+               ============================================================== */}
+            {(cinemaViewMode === 'flythrough' || cinemaViewMode === 'split') && (
+              <div className={`relative ${cinemaViewMode === 'split' ? 'w-1/2 h-full border-r border-slate-800' : 'w-full h-full'} overflow-hidden`}>
+                {/* 4K Real-World Architectural Campus Background with Cinematic Camera Drift */}
+                <div className="absolute inset-0 overflow-hidden">
+                  <img
+                    src={env.imageUrl}
+                    alt={env.name}
+                    className={`w-full h-full object-cover object-center transition-all duration-1000 ${
+                      isVideoPlaying
+                        ? 'scale-110 translate-y-[-1%] transition-transform duration-[8000ms] ease-out'
+                        : 'scale-100'
+                    }`}
+                  />
+                  {/* Cinematic Dark Vignette & Photonic Glow */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950/70" />
+                  <div className="absolute inset-0 bg-radial-gradient from-transparent via-slate-950/30 to-slate-950/80" />
+                </div>
+
+                {/* 4K Viewfinder HUD Brackets */}
+                <div className="absolute top-4 left-4 w-9 h-9 border-t-2 border-l-2 border-rose-400/80 pointer-events-none z-20" />
+                <div className="absolute top-4 right-4 w-9 h-9 border-t-2 border-r-2 border-rose-400/80 pointer-events-none z-20" />
+                <div className="absolute bottom-28 left-4 w-9 h-9 border-b-2 border-l-2 border-rose-400/80 pointer-events-none z-20" />
+                <div className="absolute bottom-28 right-4 w-9 h-9 border-b-2 border-r-2 border-rose-400/80 pointer-events-none z-20" />
+
+                {/* Live Camera Telemetry HUD in Viewfinder */}
+                <div className="absolute top-4 left-6 pointer-events-none z-20 font-mono text-[10px] text-rose-300 space-y-0.5 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-rose-500/40 backdrop-blur-md">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                    <span className="font-bold">4K CINEMATIC FLYTHROUGH</span>
+                    <span className="text-slate-500">|</span>
+                    <span className="text-cyan-300">60 FPS</span>
+                  </div>
+                  <div className="text-slate-300">
+                    TARGET: <strong className="text-white">{selectedNode.name}</strong>
+                  </div>
+                </div>
+
+                <div className="absolute top-4 right-6 pointer-events-none z-20 font-mono text-[10px] text-amber-300 text-right bg-slate-950/80 px-3 py-1.5 rounded-xl border border-amber-500/40 backdrop-blur-md">
+                  <div className="font-bold">{currentScene.opticalPower}</div>
+                  <div className="text-[9px] text-slate-300">{currentScene.speedRating}</div>
+                </div>
+
+                {/* Holographic AR Optical Network Flow Overlay */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
+                  {/* Glowing Feeder Backbone Path */}
+                  <path
+                    d="M 120 420 Q 300 280, 520 320 T 880 260"
+                    fill="none"
+                    stroke="#f43f5e"
+                    strokeWidth="4"
+                    strokeOpacity="0.8"
+                    strokeDasharray="8 6"
+                    className="animate-pulse"
+                  />
+                  {/* Laser light pulse travelling along fiber */}
+                  {isVideoPlaying && (
+                    <circle r="6" fill="#38bdf8" className="animate-ping">
+                      <animateMotion
+                        path="M 120 420 Q 300 280, 520 320 T 880 260"
+                        dur="3s"
+                        repeatCount="indefinite"
+                      />
+                    </circle>
+                  )}
+                </svg>
+
+                {/* Photonic Equipment Callout Badges on 4K Scene */}
+                <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
+                  <div className="relative p-4 rounded-2xl bg-slate-950/90 border-2 border-rose-400 shadow-2xl backdrop-blur-md max-w-md text-center animate-fadeIn">
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 text-[10px] font-mono font-bold mb-1">
+                      <Film className="w-3 h-3" />
+                      <span>STAGE ACTIVE: {currentScene.cameraAngle}</span>
+                    </div>
+                    <h4 className="text-base font-extrabold text-white">
+                      {selectedNode.name}
+                    </h4>
+                    <p className="text-xs text-cyan-300 font-mono mt-0.5">
+                      Model: {selectedNode.modelExample} · Role: {selectedNode.category}
+                    </p>
+                    <div className="mt-2 pt-2 border-t border-slate-800 flex items-center justify-around text-[11px] font-mono">
+                      <span className="text-amber-300">Tx/Rx: {currentScene.opticalPower}</span>
+                      <span className="text-emerald-400">Bandwidth: {currentScene.speedRating}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ==============================================================
+                MODE 2: 3D SCHEMATIC ALL-OPTICAL ARCHITECTURE (Auto-fitted)
+               ============================================================== */}
+            {(cinemaViewMode === 'schematic' || cinemaViewMode === 'split') && (
+              <div className={`relative ${cinemaViewMode === 'split' ? 'w-1/2 h-full' : 'w-full h-full'} overflow-hidden flex items-center justify-center p-4`}>
+                {/* Ambient Grid */}
+                <div
+                  className="absolute inset-0 opacity-20 pointer-events-none"
+                  style={{
+                    backgroundImage: 'radial-gradient(#38bdf8 1px, transparent 1px)',
+                    backgroundSize: '24px 24px'
+                  }}
+                />
+
+                {/* Perfectly Bounded 3D Perspective Container */}
+                <div
+                  style={{
+                    transform: `perspective(1000px) rotateX(${pitchAngle}deg) scale(${zoomLevel})`,
+                    transformOrigin: 'center center',
+                    transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+                  }}
+                  className="relative w-full max-w-6xl h-[460px] sm:h-[520px]"
+                >
+                  {/* SVG Connecting Links */}
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+                    {env.links.map((link, lIdx) => {
+                      const fromNode = env.nodes.find(n => n.id === link.fromId);
+                      const toNode = env.nodes.find(n => n.id === link.toId);
+                      if (!fromNode || !toNode) return null;
+                      const isHighlighted = selectedNodeId === fromNode.id || selectedNodeId === toNode.id;
+                      const color = isHighlighted ? '#f43f5e' : link.color;
+                      return (
+                        <g key={lIdx}>
+                          <line
+                            x1={`${fromNode.posX}%`}
+                            y1={`${fromNode.posY}%`}
+                            x2={`${toNode.posX}%`}
+                            y2={`${toNode.posY}%`}
+                            stroke={color}
+                            strokeWidth={isHighlighted ? 4.5 : 2}
+                            strokeOpacity={isHighlighted ? 1.0 : 0.5}
+                          />
+                          {isLaserSimulating && (
+                            <line
+                              x1={`${fromNode.posX}%`}
+                              y1={`${fromNode.posY}%`}
+                              x2={`${toNode.posX}%`}
+                              y2={`${toNode.posY}%`}
+                              stroke={color}
+                              strokeWidth={isHighlighted ? 4 : 2}
+                              strokeDasharray={isHighlighted ? "8 6" : "4 10"}
+                              className="animate-pulse"
+                            />
+                          )}
+                        </g>
+                      );
+                    })}
+                  </svg>
+
+                  {/* Nodes in 3D Layout */}
+                  {env.nodes.map(node => {
+                    const isSelected = selectedNodeId === node.id;
+                    return (
+                      <div
+                        key={node.id}
+                        onClick={() => {
+                          setSelectedNodeId(node.id);
+                          playLaserBeep(850);
+                        }}
+                        style={{
+                          left: `${node.posX}%`,
+                          top: `${node.posY}%`,
+                          transform: 'translate(-50%, -50%)',
+                          zIndex: isSelected ? 40 : 20 + node.layerZ
+                        }}
+                        className="absolute cursor-pointer transition-all duration-300"
+                      >
+                        {isSelected && (
+                          <div className="absolute -inset-3 pointer-events-none flex items-center justify-center animate-spin-slow">
+                            <div className="w-full h-full rounded-full border-2 border-dashed border-rose-400 opacity-80" />
+                          </div>
+                        )}
+
+                        <div
+                          className={`p-2.5 sm:p-3 rounded-2xl border text-center transition-all ${
+                            isSelected
+                              ? 'bg-rose-500/30 border-rose-400 shadow-xl shadow-rose-500/40 scale-105 ring-2 ring-rose-400'
+                              : 'bg-slate-900/90 border-slate-700 hover:border-slate-500 hover:scale-102'
+                          }`}
+                        >
+                          <div className="flex items-center justify-center gap-1 mb-0.5">
+                            <span className={`w-2 h-2 rounded-full ${node.powerState === 'active' ? 'bg-rose-400 animate-pulse' : 'bg-emerald-400'}`} />
+                            <span className="text-[8px] font-mono uppercase text-slate-400">{node.powerState}</span>
+                          </div>
+                          <div className="text-xs font-bold text-white max-w-[120px] truncate">{node.name}</div>
+                          <div className="text-[9px] text-cyan-300 font-mono max-w-[120px] truncate">{node.category}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ==============================================================
+                FLOATING CINEMA SUBTITLE CARD OVERLAY (Clean & Non-Blocking)
+               ============================================================== */}
+            {isSubtitleVisible && (
+              <div className="absolute bottom-16 sm:bottom-20 left-1/2 -translate-x-1/2 w-[94%] max-w-3xl z-30 pointer-events-auto">
+                <div className="p-3 sm:p-4 rounded-2xl bg-slate-950/85 backdrop-blur-xl border border-rose-500/40 shadow-2xl space-y-1.5">
+                  <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono font-bold text-[10px]">
+                        SCENE {videoSceneIndex + 1}/6
+                      </span>
+                      <span className="font-bold text-white text-xs">
+                        {currentScene.title}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          if (isSpeaking) {
+                            stopSpeaking();
+                          } else {
+                            speakNarration('ur');
+                          }
+                        }}
+                        className="px-2.5 py-0.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                      >
+                        <Volume2 className="w-3 h-3" />
+                        <span>{isSpeaking ? 'وقف' : '🔊 اردو آواز'}</span>
+                      </button>
+                      <button
+                        onClick={() => setIsSubtitleVisible(false)}
+                        className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 cursor-pointer"
+                        title="Dismiss Subtitles"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* English Narration */}
+                  <p className="text-xs text-slate-200 leading-normal font-medium">
+                    {currentScene.narrationEn}
+                  </p>
+
+                  {/* Urdu Narration */}
+                  <p className="text-xs sm:text-sm text-amber-200 leading-relaxed font-urdu text-right border-t border-slate-800/80 pt-1" dir="rtl">
+                    {currentScene.narrationUr}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* ==============================================================
+                SLIM BOTTOM VIDEO TIMELINE SCRUBBER (52px tall, sleek & clean)
+               ============================================================== */}
+            <div className="absolute bottom-0 inset-x-0 h-14 bg-slate-950/95 border-t border-slate-800/80 px-4 sm:px-6 flex items-center justify-between gap-4 z-30">
+              {/* 6 Interactive Scene Buttons */}
+              <div className="flex-1 grid grid-cols-6 gap-1.5 max-w-4xl">
+                {videoTourScenes.map((scene, idx) => {
+                  const isCur = videoSceneIndex === idx;
+                  const isPast = videoSceneIndex > idx;
+                  return (
+                    <button
+                      key={scene.id}
+                      onClick={() => handleSelectScene(idx)}
+                      className={`px-2 py-1 rounded-lg border text-left cursor-pointer transition-all ${
+                        isCur
+                          ? 'bg-rose-500/25 border-rose-400 ring-1 ring-rose-400 text-rose-300'
+                          : isPast
+                          ? 'bg-slate-900 border-slate-700 text-slate-300'
+                          : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between text-[9px] font-mono">
+                        <span className="font-bold">S{idx + 1}</span>
+                        <span>{scene.timestamp.split(' - ')[0]}</span>
+                      </div>
+                      <div className="w-full bg-slate-800 h-1 rounded-full mt-1 overflow-hidden">
+                        <div
+                          className={`h-full transition-all ${
+                            isCur ? 'w-full bg-rose-400 animate-pulse' : isPast ? 'w-full bg-cyan-400' : 'w-0'
+                          }`}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Timecode & Hotkey Legend */}
+              <div className="hidden md:flex items-center gap-3 text-xs font-mono text-slate-400 shrink-0">
+                <span className="text-cyan-300 font-bold">{currentScene.timestamp}</span>
+                <span className="text-slate-500">|</span>
+                <span className="text-slate-400 text-[10px]">Space = Pause/Play · Esc = Exit</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
